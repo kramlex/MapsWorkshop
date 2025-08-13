@@ -18,6 +18,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.yandex.mapkit.kmp.AnimationFactory
+import com.yandex.mapkit.kmp.AnimationType
 import com.yandex.mapkit.kmp.map.CameraPositionFactory
 import com.yandex.mapkit.kmp.map.MapObjectCollection
 import com.yandex.mapkit.kmp.map.PlacemarkMapObject
@@ -179,6 +181,8 @@ private fun MapScreenMutableState.moveToPlacemarkAnimated(
             zoom = 16f,
             azimuth = 0f,
             tilt = 0f,
-        )
+        ),
+        AnimationFactory.create(AnimationType.SMOOTH, 1f),
+        null
     )
 }
