@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -21,30 +20,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.yandex.mapkit.kmp.AnimationFactory
 import com.yandex.mapkit.kmp.AnimationType
-import com.yandex.mapkit.kmp.map.CameraListener
 import com.yandex.mapkit.kmp.map.CameraPositionFactory
-import com.yandex.mapkit.kmp.map.InputListener
 import com.yandex.mapkit.kmp.map.MapObjectCollection
 import com.yandex.mapkit.kmp.map.PlacemarkMapObject
 import com.yandex.mapkit.kmp.map.geometry
 import com.yandex.mapkit.kmp.map.map
 import com.yandex.mapkit.kmp.map.mapObjects
+import com.yandex.mapkit.kmp.map.userData
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import ru.yandex.maps.workshop.common.CommonApp
 import ru.yandex.maps.workshop.common.additional.context.PlatformContext
-import ru.yandex.maps.workshop.common.model.Placemark
 import ru.yandex.maps.workshop.common.screen.LongTapEvent
 import ru.yandex.maps.workshop.common.screen.PlacemarkViewState
 import ru.yandex.maps.workshop.common.screen.SelectPlacemarkEvent
 import ru.yandex.maps.workshop.internal.PinIconFactory
 import ru.yandex.maps.workshop.internal.map.Map
-import ru.yandex.maps.workshop.internal.map.NativeMap
 import ru.yandex.maps.workshop.internal.map.MapState
 import ru.yandex.maps.workshop.internal.mapkit.bindToLifecycleOwner
 import ru.yandex.maps.workshop.internal.mapkit.rememberAndInitializeMapKit
 import ru.yandex.maps.workshop.internal.view.PlacemarkPager
 
-class MapScreenMutableState {
+class MapScreenMutableState(
+    private val onPlacemarkTap: (String) -> Unit
+) {
+
     val mapState by mutableStateOf(MapState())
     private var collection: MapObjectCollection? by mutableStateOf(null)
     private val placemarkObjects = mutableMapOf<String, PlacemarkMapObject>()
@@ -54,9 +53,16 @@ class MapScreenMutableState {
             collection = new
         }
 
+    private val listener = ObjectTapListenerWrapper { mapObject ->
+        val id = mapObject.userData as? String ?: return@ObjectTapListenerWrapper
+        onPlacemarkTap(id)
+    }
+
     fun allPlacemarkObjects(): Set<String> = placemarkObjects.keys
     fun getPlacemarkObject(id: String): PlacemarkMapObject? = placemarkObjects[id]
     fun setPlacemarkObject(id: String, obj: PlacemarkMapObject) {
+        obj.userData = id
+        obj.addTapListener(listener)
         placemarkObjects[id] = obj
     }
 
@@ -87,9 +93,13 @@ fun App() {
         apiKey = BuildKonfig.mapkitToken
     ).bindToLifecycleOwner()
 
-    val mapScreenMutableState = remember { MapScreenMutableState() }
-
     val viewModel = remember { app.createMainViewModel() }
+
+    val mapScreenMutableState = remember {
+        MapScreenMutableState(
+            onPlacemarkTap = { viewModel.dispatch(SelectPlacemarkEvent(it) )}
+        )
+    }
 
     val state by viewModel.viewStates().collectAsState()
     val placemarks = state.placemarks

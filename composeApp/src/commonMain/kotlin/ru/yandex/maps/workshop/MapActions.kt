@@ -40,7 +40,7 @@ class ObjectTapListenerWrapper(private val tapAction: MapObjectTapAction): MapOb
         mapObject: MapObject,
         point: Point
     ): Boolean {
-        // TODO
+        tapAction(mapObject)
         return true
     }
 }
