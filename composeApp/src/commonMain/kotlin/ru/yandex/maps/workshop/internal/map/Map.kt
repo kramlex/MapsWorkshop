@@ -9,6 +9,8 @@ import androidx.compose.runtime.setValue
 import com.yandex.mapkit.kmp.ScreenPointFactory
 import com.yandex.mapkit.kmp.geometry.Point
 import com.yandex.mapkit.kmp.map.MapWindow
+import ru.yandex.maps.workshop.MapMoveAction
+import ru.yandex.maps.workshop.MapTapAction
 
 class MapState(val coordinates: Point? = null) {
     var map by mutableStateOf<MapWindow?>(null)

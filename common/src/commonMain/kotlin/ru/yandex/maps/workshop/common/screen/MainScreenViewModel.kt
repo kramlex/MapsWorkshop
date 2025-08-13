@@ -1,5 +1,7 @@
 package ru.yandex.maps.workshop.common.screen
 
+import com.yandex.mapkit.kmp.geometry.mpLatitude
+import com.yandex.mapkit.kmp.geometry.mpLongitude
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -9,6 +11,7 @@ import ru.yandex.maps.workshop.common.DescriptionGenerator
 import ru.yandex.maps.workshop.common.additional.udf.Event
 import ru.yandex.maps.workshop.common.additional.udf.Reducer
 import ru.yandex.maps.workshop.common.additional.udf.ViewModel
+import ru.yandex.maps.workshop.common.internal.IconId
 import ru.yandex.maps.workshop.common.internal.PlacemarkRepository
 import ru.yandex.maps.workshop.common.model.Placemark
 
@@ -37,7 +40,21 @@ class MainScreenViewModel internal constructor(
 
     override fun sideEffect(event: Event) {
         when (event) {
-            //TODO
+           is LongTapEvent -> {
+               val index = viewStates().value.placemarks.size
+               val id = "long_tap_placemark_${event.point.mpLatitude}_${event.point.mpLongitude}"
+               val randomIconId = IconId.randomNewPlacemarkIconId()
+               val title = "Новое событие $index"
+               placemarkRepository.addOrUpdatePlacemark(
+                   Placemark(
+                       id = id,
+                       latitude = event.point.mpLatitude,
+                       longitude = event.point.mpLongitude,
+                       title = title,
+                       iconId = randomIconId
+                   )
+               )
+           }
         }
     }
 

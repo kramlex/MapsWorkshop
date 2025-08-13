@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.yandex.mapkit.kmp.AnimationFactory
 import com.yandex.mapkit.kmp.AnimationType
+import com.yandex.mapkit.kmp.map.CameraListener
 import com.yandex.mapkit.kmp.map.CameraPositionFactory
+import com.yandex.mapkit.kmp.map.InputListener
 import com.yandex.mapkit.kmp.map.MapObjectCollection
 import com.yandex.mapkit.kmp.map.PlacemarkMapObject
 import com.yandex.mapkit.kmp.map.geometry
@@ -30,6 +33,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import ru.yandex.maps.workshop.common.CommonApp
 import ru.yandex.maps.workshop.common.additional.context.PlatformContext
 import ru.yandex.maps.workshop.common.model.Placemark
+import ru.yandex.maps.workshop.common.screen.LongTapEvent
 import ru.yandex.maps.workshop.common.screen.PlacemarkViewState
 import ru.yandex.maps.workshop.common.screen.SelectPlacemarkEvent
 import ru.yandex.maps.workshop.internal.PinIconFactory
@@ -96,6 +100,9 @@ fun App() {
                 mapScreenMutableState = mapScreenMutableState,
                 placemarks = placemarks,
                 selectedPlacemarkId = state.selectedPlacemarkId,
+                onLongTap = { point ->
+                    viewModel.dispatch(LongTapEvent(point))
+                }
             )
             Box(
                 contentAlignment = Alignment.BottomCenter,
@@ -127,9 +134,21 @@ fun MapWithPlacemarks(
     mapScreenMutableState: MapScreenMutableState,
     placemarks: List<PlacemarkViewState>,
     selectedPlacemarkId: String?,
+    onLongTap: MapTapAction = {},
+    onTap: MapTapAction = {},
 ) {
     val pinIconFactory = PinIconFactory.create()
-    Map(state = mapScreenMutableState.mapState)
+
+    val listener = remember { TapListenerWrapper(onLongTap, onTap) }
+    Map(
+        state = mapScreenMutableState.mapState,
+        onCreate = {
+            it.map.addInputListener(listener)
+        },
+        onRelease = {
+            it?.map?.removeInputListener(listener)
+        }
+    )
 
     LaunchedEffect(selectedPlacemarkId) {
         mapScreenMutableState.moveToPlacemarkAnimated(placemarks, selectedPlacemarkId)
