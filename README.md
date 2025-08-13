@@ -1,14 +1,207 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# Yandex Maps Workshop
 
-* `/composeApp` is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - `commonMain` is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    `iosMain` would be the right folder for such calls.
+## 🎯 Обзор проекта
 
-* `/iosApp` contains iOS applications. Even if you’re sharing your UI with Compose Multiplatform, 
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+Этот воркшоп представляет собой пошаговое создание мобильного приложения с картами Yandex Maps, используя **Kotlin Multiplatform** и **Compose Multiplatform**. Приложение демонстрирует основные возможности работы с картами: отображение, добавление меток и работу с камерой.
+
+## 🛠 Технологический стек
+
+### Основные технологии
+- **Kotlin Multiplatform** - кроссплатформенная разработка
+- **Compose Multiplatform** - современный UI фреймворк
+- **Yandex MapKit** - картографический SDK
+
+### Целевые платформы
+- Android (API 26+)
+- iOS (iOS 15+)
+
+## 💻 Необходимое программное обеспечение
+
+### 1. Java Development Kit (JDK)
+- **Версия**: 17 или новее (LTS версии)
+- **Источник**:
+    - [Oracle JDK](https://www.oracle.com/java/technologies/downloads/)
+    - [OpenJDK](https://adoptium.net/)
+    - [Amazon Corretto](https://aws.amazon.com/corretto/)
+
+**Установка на macOS**:
+```bash
+# Через Homebrew
+brew install openjdk@17
+
+# Добавить в PATH
+echo 'export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**Установка на Windows**:
+- Скачать установщик с официального сайта
+- Запустить установщик от имени администратора
+- Добавить JAVA_HOME в переменные среды
+
+**Установка на Linux**:
+```bash
+sudo apt update
+sudo apt install openjdk-17-jdk
+```
+
+### 2. Android Studio
+- **Версия**: Hedgehog (2023.1.1) или новее
+- **Источник**: [developer.android.com](https://developer.android.com/studio)
+
+**Дополнительные компоненты**:
+- Android SDK Platform 36
+- Android SDK Build-Tools
+- Android Emulator
+- Android SDK Platform-Tools
+
+**Настройка переменных среды**:
+```bash
+# macOS/Linux
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/emulator
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+
+# Windows
+set ANDROID_HOME=C:\Users\%USERNAME%\AppData\Local\Android\Sdk
+set PATH=%PATH%;%ANDROID_HOME%\emulator
+set PATH=%PATH%;%ANDROID_HOME%\platform-tools
+```
+
+### 3. Xcode (только для macOS)
+- **Версия**: 15.0 или новее
+- **Источник**: Mac App Store
+- **Дополнительно**: Command Line Tools
+
+**Установка Command Line Tools**:
+```bash
+xcode-select --install
+```
+
+### 4. CocoaPods
+- **Версия**: 1.12.0 или новее
+- **Источник**: [cocoapods.org](https://cocoapods.org/)
+
+**Установка**:
+```bash
+sudo gem install cocoapods
+```
+
+### 5. Git
+- **Версия**: 2.30.0 или новее
+- **Источник**: [git-scm.com](https://git-scm.com/)
+
+**Установка на macOS**:
+```bash
+brew install git
+```
+
+**Установка на Windows**:
+- Скачать установщик с официального сайта
+- Рекомендуется использовать Git Bash
+
+**Установка на Linux**:
+```bash
+sudo apt install git
+```
+
+## 🔑 API ключи
+
+- **Готовые ключи для воркшопа**: [Скачать с GitHub Gist](https://gist.github.com/kramlex/483f0bf271e8af439e429c2582b19924)
+- **Yandex MapKit API Key** - для карт
+- **Yandex GPT API Key** - для AI
+- **Yandex Cloud Folder ID** - для облачных сервисов
+
+## 🏗 Структура проекта
+
+```
+MapsWorkshopInternal/
+├── common/               # Общая логика приложения
+├── composeApp/           # Основное приложение (Android/iOS)
+├── mapkit-bindings/      # Kotlin обертки для Yandex MapKit
+├── mapkit-interop/       # Нативные интерфейсы
+└── iosApp/               # iOS приложение
+```
+
+### Детальное описание модулей
+
+#### `common/`
+Общая бизнес-логика приложения:
+- `CommonApp.kt` - основная модуль DI
+- `DescriptionGenerator.kt` - генератор описаний для меток
+- `SearchManager.kt` - менеджер поиска
+
+#### `composeApp/`
+Основное приложение с UI:
+- `App.kt` - главный компонент приложения
+- `MapActions.kt` - действия с картой
+
+## 🚀 Настройка проекта
+
+### 1. Клонирование репозитория
+```bash
+git clone <repository-url>
+cd MapsWorkshopInternal
+```
+
+### 2. Настройка API ключей
+**Получить ключи**: [🔑 GitHub Gist](https://gist.github.com/kramlex/483f0bf271e8af439e429c2582b19924)
+
+Создать файл `gradle.properties` в корне проекта:
+
+```properties
+
+...
+
+folderId=ваш_folder_id
+gptToken=ваш_gpt_token
+mapkitToken=ваш_mapkit_token
+```
+
+### 3. Синхронизация проекта
+```bash
+
+# Синхронизация iOS зависимостей
+cd iosApp
+pod install
+cd ..
+
+# Синхронизация Gradle
+./gradlew
+```
+
+## 📱 Исходное состояние проекта (#2-base)
+
+**Что уже готово в проекте**:
+- Полностью настроенный Kotlin Multiplatform проект с поддержкой Android и iOS
+- Интегрированный Yandex MapKit SDK с готовыми Kotlin обертками
+- Настроенная Gradle конфигурация для всех платформ
+- Готовая архитектура приложения с MVVM паттерном
+- Полнофункциональные интерфейсы для работы с картами и метками
 
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+## 📊 Системные требования
+
+### Операционная система
+- **macOS**: 12.0 (Monterey) или новее (обязательно для iOS разработки)
+- **Windows**: 10 (версия 1903) или новее
+- **Linux**: Ubuntu 20.04 LTS или новее
+
+### Специальные требования для iOS
+- **macOS**: Обязательно для iOS разработки
+- **Xcode**: Последняя стабильная версия
+- **CocoaPods**: Установленный и настроенный
+
+## 📚 Дополнительные ресурсы
+
+### Документация
+- [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html)
+- [Compose Multiplatform](https://www.jetbrains.com/lp/compose-multiplatform/)
+- [Yandex MapKit](https://developer.tech.yandex.ru/maps/mapkit/)
+- [Yandex GPT](https://cloud.yandex.ru/docs/foundation-models/)
+
+---
+
+**⚠️ Важно**:
+- Не публикуйте ключи в публичных репозиториях
+- После воркшопа ключи будут автоматически деактивированы
