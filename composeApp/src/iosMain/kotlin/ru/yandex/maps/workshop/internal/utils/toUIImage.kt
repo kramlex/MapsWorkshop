@@ -1,4 +1,4 @@
-package ru.yandex.maps.workshop.utils
+package ru.yandex.maps.workshop.internal.utils
 
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.refTo

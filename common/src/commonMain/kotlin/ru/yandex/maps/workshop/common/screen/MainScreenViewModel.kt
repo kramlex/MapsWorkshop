@@ -1,33 +1,104 @@
 package ru.yandex.maps.workshop.common.screen
 
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import ru.yandex.maps.workshop.common.DescriptionGenerator
+import ru.yandex.maps.workshop.common.additional.udf.Event
 import ru.yandex.maps.workshop.common.additional.udf.Reducer
 import ru.yandex.maps.workshop.common.additional.udf.ViewModel
+import ru.yandex.maps.workshop.common.internal.PlacemarkRepository
+import ru.yandex.maps.workshop.common.model.Placemark
 
 private val ScreenReducer: Reducer<MainScreenViewModel.State> get() = { state, event ->
     when (event) {
-        is BaseMainScreenEvent -> event.reduce(state)
-
-        // todo
-
+        is BaseMainScreenEvent -> state.reduce(event)
         else -> state
     }
 }
 
 class MainScreenViewModel internal constructor(
-    descriptionGenerator: DescriptionGenerator
+    private val placemarkRepository: PlacemarkRepository,
+    private val descriptionGenerator: DescriptionGenerator
 ): ViewModel<MainScreenViewModel.State>(
     initialState = State.Initial,
     reducer = ScreenReducer
 ) {
 
+    // ===== Initialize
+
+    init {
+        listenForDescriptionGeneration()
+        listenPlacemarksRepository()
+    }
+
+    override fun sideEffect(event: Event) {
+        when (event) {
+            //TODO
+        }
+    }
+
+    // ===== State
+
     data class State(
+        internal val rawPlacemarks: List<Placemark>,
+        internal val loadingPlacemarkIds: Set<String>,
         val selectedPlacemarkId: String?,
+        val processingIds: Set<String>
     ) {
+
+        val placemarks: List<PlacemarkViewState> = rawPlacemarks.map {
+            PlacemarkViewState(it, loadingPlacemarkIds.contains(it.id))
+        }
+
         companion object {
             val Initial = State(
+                rawPlacemarks = emptyList(),
+                loadingPlacemarkIds = emptySet(),
+                processingIds = emptySet(),
                 selectedPlacemarkId = null,
             )
         }
     }
+
+    // region ===== Private
+
+    private fun listenPlacemarksRepository() {
+        placemarkRepository.placemarks.onEach {
+            store.dispatch(SetRawPlacemarks(it))
+        }.launchIn(viewModelScope)
+    }
+
+    private fun listenForDescriptionGeneration() {
+        viewStates()
+            .map { it.loadingPlacemarkIds to it.processingIds }
+            .distinctUntilChanged()
+            .onEach { (loadingIds, processingIds) ->
+                val newToProcess = loadingIds - processingIds
+                newToProcess.forEach { placemarkId ->
+                    viewModelScope.launch {
+                        val description = generateDescription(placemarkId)
+                        store.dispatch(
+                            GeneratePlacemarkDescriptionEndEvent(id = placemarkId)
+                        )
+                        placemarkRepository.updateDescription(placemarkId, description)
+                    }
+                }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private suspend fun generateDescription(placemarkId: String): String? {
+        return runCatching {
+            descriptionGenerator.generateDescription(placemarkId)
+        }.onSuccess {
+            placemarkRepository.updateDescription(placemarkId, it)
+        }.onFailure {
+            println(it.message)
+        }.getOrNull()
+    }
+
+    // endregion
 }

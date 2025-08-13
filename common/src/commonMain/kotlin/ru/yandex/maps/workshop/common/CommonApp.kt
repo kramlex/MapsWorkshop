@@ -1,9 +1,11 @@
 package ru.yandex.maps.workshop.common
 
+import com.yandex.mapkit.search.kmp.SearchFactory
+import com.yandex.mapkit.search.kmp.SearchManagerType
 import ru.yandex.maps.workshop.common.additional.context.PlatformContext
 import ru.yandex.maps.workshop.common.additional.context.observableSettingsFactory
 import ru.yandex.maps.workshop.common.additional.llm.YandexGPTClient
-import ru.yandex.maps.workshop.common.additional.settings.ObservableSettingsFactory
+import ru.yandex.maps.workshop.common.internal.PlacemarkRepository
 import ru.yandex.maps.workshop.common.screen.MainScreenViewModel
 
 class CommonApp(
@@ -12,9 +14,12 @@ class CommonApp(
     context: PlatformContext
 ) {
 
-    private val settingsFactory: ObservableSettingsFactory by lazy {
-        context.observableSettingsFactory()
-    }
+    fun createMainViewModel() = MainScreenViewModel(
+        descriptionGenerator = descriptionGenerator,
+        placemarkRepository = placemarkRepository
+    )
+
+    // ======= Private
 
     private val gptClient: YandexGPTClient by lazy {
         YandexGPTClient(
@@ -23,13 +28,23 @@ class CommonApp(
         )
     }
 
-    private val descriptionGenerator: DescriptionGenerator by lazy {
-        DescriptionGenerator(
-            yandexGPTClient = gptClient
+    private val searchManager: SearchManager by lazy {
+        SearchManager(
+            searchManager = SearchFactory.instance.createSearchManager(SearchManagerType.ONLINE),
         )
     }
 
-    fun createMainViewModel() = MainScreenViewModel(
-        descriptionGenerator = descriptionGenerator
-    )
+    private val descriptionGenerator by lazy {
+        DescriptionGenerator(
+            yandexGPTClient = gptClient,
+            searchManager = searchManager,
+        )
+    }
+
+    private val placemarkRepository: PlacemarkRepository by lazy {
+        PlacemarkRepository(
+            factory = context.observableSettingsFactory()
+        )
+    }
+
 }
