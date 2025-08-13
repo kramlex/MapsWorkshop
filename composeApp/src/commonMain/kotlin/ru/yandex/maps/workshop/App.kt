@@ -30,6 +30,7 @@ import com.yandex.mapkit.kmp.map.userData
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import ru.yandex.maps.workshop.common.CommonApp
 import ru.yandex.maps.workshop.common.additional.context.PlatformContext
+import ru.yandex.maps.workshop.common.screen.GeneratePlacemarkDescriptionEvent
 import ru.yandex.maps.workshop.common.screen.LongTapEvent
 import ru.yandex.maps.workshop.common.screen.PlacemarkViewState
 import ru.yandex.maps.workshop.common.screen.SelectPlacemarkEvent
@@ -130,9 +131,9 @@ fun App() {
                     onCardClick = { id ->
                         mapScreenMutableState.moveToPlacemarkAnimated(placemarks, id)
                     },
-                    onGenerateClick = {
-                        //TODO
-                    },
+                    onGenerateClick = { id ->
+                        viewModel.dispatch(GeneratePlacemarkDescriptionEvent(id))
+                    }
                 )
             }
         }

@@ -34,16 +34,17 @@ class CommonApp(
         )
     }
 
+    private val placemarkRepository: PlacemarkRepository by lazy {
+        PlacemarkRepository(
+            factory = context.observableSettingsFactory()
+        )
+    }
+
     private val descriptionGenerator by lazy {
         DescriptionGenerator(
             yandexGPTClient = gptClient,
             searchManager = searchManager,
-        )
-    }
-
-    private val placemarkRepository: PlacemarkRepository by lazy {
-        PlacemarkRepository(
-            factory = context.observableSettingsFactory()
+            placemarkRepository = placemarkRepository
         )
     }
 

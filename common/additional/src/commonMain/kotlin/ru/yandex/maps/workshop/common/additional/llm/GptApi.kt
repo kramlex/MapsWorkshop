@@ -81,4 +81,4 @@ class YandexGPTClient(
 }
 
 suspend fun YandexGPTClient.completeText(request: CompletionRequest) =
-    complete(request).result.alternatives.first().message.text
+    complete(request).result.alternatives.firstOrNull()?.message?.text
