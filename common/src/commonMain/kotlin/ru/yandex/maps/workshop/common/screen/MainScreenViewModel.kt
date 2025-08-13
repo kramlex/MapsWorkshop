@@ -15,6 +15,7 @@ import ru.yandex.maps.workshop.common.model.Placemark
 private val ScreenReducer: Reducer<MainScreenViewModel.State> get() = { state, event ->
     when (event) {
         is BaseMainScreenEvent -> state.reduce(event)
+        is SelectPlacemarkEvent -> state.copy(selectedPlacemarkId = event.id)
         else -> state
     }
 }

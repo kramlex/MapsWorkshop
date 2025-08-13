@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.yandex.mapkit.kmp.map.CameraPositionFactory
 import com.yandex.mapkit.kmp.map.MapObjectCollection
 import com.yandex.mapkit.kmp.map.PlacemarkMapObject
 import com.yandex.mapkit.kmp.map.geometry
@@ -26,7 +27,9 @@ import com.yandex.mapkit.kmp.map.mapObjects
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import ru.yandex.maps.workshop.common.CommonApp
 import ru.yandex.maps.workshop.common.additional.context.PlatformContext
+import ru.yandex.maps.workshop.common.model.Placemark
 import ru.yandex.maps.workshop.common.screen.PlacemarkViewState
+import ru.yandex.maps.workshop.common.screen.SelectPlacemarkEvent
 import ru.yandex.maps.workshop.internal.PinIconFactory
 import ru.yandex.maps.workshop.internal.map.Map
 import ru.yandex.maps.workshop.internal.map.NativeMap
@@ -102,11 +105,11 @@ fun App() {
                 PlacemarkPager(
                     placemarks = state.placemarks,
                     selectedPlacemarkId = state.selectedPlacemarkId,
-                    onCardClick = {
-                        //TODO
+                    onCardSelected = { id ->
+                        viewModel.dispatch(SelectPlacemarkEvent(id))
                     },
-                    onCardSelected = {
-                        //TODO
+                    onCardClick = { id ->
+                        mapScreenMutableState.moveToPlacemarkAnimated(placemarks, id)
                     },
                     onGenerateClick = {
                         //TODO
@@ -125,6 +128,10 @@ fun MapWithPlacemarks(
 ) {
     val pinIconFactory = PinIconFactory.create()
     Map(state = mapScreenMutableState.mapState)
+
+    LaunchedEffect(selectedPlacemarkId) {
+        mapScreenMutableState.moveToPlacemarkAnimated(placemarks, selectedPlacemarkId)
+    }
 
     LaunchedEffect(placemarks, selectedPlacemarkId) {
         val collection = mapScreenMutableState.collection()
@@ -156,4 +163,22 @@ fun MapWithPlacemarks(
             }
         }
     }
+}
+
+private fun MapScreenMutableState.moveToPlacemarkAnimated(
+    placemarks: List<PlacemarkViewState>,
+    selectedPlacemarkId: String?
+) {
+    val placemark = placemarks.find { it.id == selectedPlacemarkId } ?: return
+    val mapWindow = mapState.map
+    val map = mapWindow?.map ?: return
+
+    map.move(
+        CameraPositionFactory.create(
+            target = placemark.position,
+            zoom = 16f,
+            azimuth = 0f,
+            tilt = 0f,
+        )
+    )
 }
