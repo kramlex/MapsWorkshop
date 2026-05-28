@@ -1,31 +1,44 @@
 @file:Suppress("LocalVariableName")
 
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.DefFileTask
+import io.github.frankois944.spmForKmp.swiftPackageConfig
+import org.gradle.api.Action
+import org.gradle.api.Task
+import java.io.File
+import java.io.Serializable
 
 plugins {
     alias(libs.plugins.multiplatformModuleConvention)
-//    alias(libs.plugins.kotlinCocoapods)
+    alias(libs.plugins.spmForKmp)
 }
 
 android.namespace = "ru.yandex.maps.workshop.mapkit.kmp"
 
-
 kotlin {
-//    cocoapods {
-//        summary = "Some description for the Shared Module"
-//        homepage = "Link to the Shared Module homepage"
-//        version = "1.0"
-//        ios.deploymentTarget = "15.0"
-//        podfile = project.file("../iosApp/Podfile")
-//        noPodspec()
-//
-//        pod("YandexMapsMobile") {
-//            version = libs.versions.mapkit.get()
-//            packageName = "platform.YandexMapsMobile"
-//        }
-//    }
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64(),
+    ).forEach {
+        it.swiftPackageConfig(cinteropName = "YMK") {
+            minMacos = null
+            minTvos = null
+            minWatchos = null
+            packageDependencyPrefix = "platform"
+            minIos = "16.0"
+            dependency {
+                remoteBinary(
+                    url = uri("https://github.com/c-villain/YandexMapsMobile/releases/download/4.17.0/YandexMapsMobile.xcframework.zip"),
+                    packageName = "YandexMapsMobile",
+                    exportToKotlin = true,
+                    checksum = "f21284bc1a5f9cdd36aeeaf2eb1511bcb4e67c49e46d9561341351608d019459"
+                )
+            }
+
+            exportedPackageSettings {
+                name = "YMK"
+            }
+        }
+    }
 
     sourceSets.androidMain.dependencies {
         api(libs.mapkit)
@@ -44,22 +57,64 @@ kotlin {
             }
         }
     }
+}
 
-    @OptIn(ExperimentalKotlinGradlePluginApi::class)
-    compilerOptions {
-        freeCompilerArgs.add("-Xexpect-actual-classes")
-        freeCompilerArgs.add("-Xconsistent-data-class-copy-visibility")
+//region InteropHelper
+
+val nativeInteropCinterop = layout.projectDirectory.dir("src/nativeInterop/cinterop")
+val yandexMapsMobileDefTemplate = nativeInteropCinterop.file("YandexMapsMobile.def")
+val spmGeneratedDefRoot = layout.buildDirectory.dir("spmKmpPlugin/YMK/defFiles")
+val yandexMapsMobileDefTemplateFile = yandexMapsMobileDefTemplate.asFile
+val spmGeneratedDefRootDir = spmGeneratedDefRoot.get().asFile
+
+tasks.matching { it.name.startsWith("SwiftPackageConfigAppleYMKGenerateCInteropDefinition") }.configureEach {
+    inputs.file(yandexMapsMobileDefTemplate)
+    doLast(CopyYandexMapsMobileDefAction(yandexMapsMobileDefTemplateFile, spmGeneratedDefRootDir))
+}
+
+private class CopyYandexMapsMobileDefAction(
+    private val yandexMapsMobileDefTemplate: File,
+    private val spmGeneratedDefRootDir: File,
+) : Action<Task>, Serializable {
+
+    override fun execute(task: Task) {
+        val compilerOptRegex = Regex("(?:^|\\s)(-[FI])\"([^\"]+)\"")
+
+        spmGeneratedDefRootDir.walkTopDown()
+            .filter { it.isFile && it.name == "YandexMapsMobile.def" }
+            .forEach { generatedDef ->
+                val defDirectory = generatedDef.parentFile
+                val generatedCompilerOpts = generatedDef.readText()
+                    .lineSequence()
+                    .firstOrNull { it.startsWith("compilerOpts =") }
+                    .orEmpty()
+                val bridgeCompilerOpts = defDirectory.resolve("YMK_bridge.def")
+                    .takeIf { it.isFile }
+                    ?.readText()
+                    ?.lineSequence()
+                    ?.firstOrNull { it.startsWith("compilerOpts =") }
+                    .orEmpty()
+
+                val copiedDef = defDirectory.resolve("YandexMapsMobile.def")
+                yandexMapsMobileDefTemplate.copyTo(copiedDef, overwrite = true)
+
+                val compilerOpts = ("$generatedCompilerOpts $bridgeCompilerOpts")
+                    .let { compilerOptRegex.findAll(it) }
+                    .map { "${it.groupValues[1]}\"${it.groupValues[2]}\"" }
+                    .distinct()
+                    .joinToString(" ")
+
+                val lines = copiedDef.readLines().map { line ->
+                    if (line.startsWith("compilerOpts =")) {
+                        "compilerOpts = $compilerOpts"
+                    } else {
+                        line
+                    }
+                }
+
+                copiedDef.writeText(lines.joinToString(separator = "\n", postfix = "\n"))
+            }
     }
 }
 
-tasks.withType<DefFileTask>().configureEach {
-    if (name.contains("YandexMaps")) {
-        val sourceDef = file("src/nativeInterop/cinterop/YandexMapsMobile.def")
-        val defFile = defFile.get().asFile
-        inputs.file(sourceDef)
-        outputs.file(defFile)
-        doLast {
-            sourceDef.copyTo(defFile, overwrite = true)
-        }
-    }
-}
+//endregion

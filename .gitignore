@@ -17,4 +17,9 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 /iosApp/Pods
+/iosApp/Tuist/.build
+/iosApp/*.xcodeproj
+/iosApp/*.xcworkspace
+/iosApp/Derived
 .arcignore
+mapkit-interop/exportedYMK/YMK.xcodeproj/project.pbxproj

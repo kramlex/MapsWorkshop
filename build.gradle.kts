@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.kotlinCocoapods) apply false
     alias(libs.plugins.kotlinSerialization) apply false
     alias(libs.plugins.buildkonfig) apply false
+    alias(libs.plugins.spmForKmp) apply false
 }
 
 allprojects {

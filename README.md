@@ -78,13 +78,19 @@ set PATH=%PATH%;%ANDROID_HOME%\platform-tools
 xcode-select --install
 ```
 
-### 4. CocoaPods
-- **Версия**: 1.12.0 или новее
-- **Источник**: [cocoapods.org](https://cocoapods.org/)
+### 4. Tuist
+- **Версия**: 4.0 или новее
+- **Источник**: [tuist.dev](https://tuist.dev/)
+- **Назначение**: генерация Xcode-проекта и загрузка iOS-зависимостей (Yandex MapKit через Swift Package Manager). Заменяет CocoaPods.
 
 **Установка**:
 ```bash
-sudo gem install cocoapods
+# Через Homebrew
+brew install tuist
+
+# Альтернатива — через mise
+brew install mise
+mise install tuist
 ```
 
 ### 5. Git
@@ -160,15 +166,16 @@ mapkitToken=ваш_mapkit_token
 
 ### 3. Синхронизация проекта
 ```bash
-
-# Синхронизация iOS зависимостей
-cd iosApp
-pod install
-cd ..
-
 # Синхронизация Gradle
 ./gradlew
+
+# Генерация Xcode-проекта (Tuist)
+./iosApp/generate.sh
 ```
+
+Скрипт `iosApp/generate.sh` запускает `tuist install` (загрузка SPM-зависимостей, включая Yandex MapKit) и `tuist generate` (создание `MapsWorkshop.xcworkspace`). После выполнения откройте `iosApp/MapsWorkshop.xcworkspace` в Xcode.
+
+> ⚠️ Файлы, сгенерированные Tuist (`*.xcodeproj`, `*.xcworkspace`, `Derived/`), не коммитятся — перегенерируйте их через `generate.sh` после клонирования или смены ветки.
 
 ## 📱 Исходное состояние проекта (#2-base)
 
@@ -190,7 +197,7 @@ cd ..
 ### Специальные требования для iOS
 - **macOS**: Обязательно для iOS разработки
 - **Xcode**: Последняя стабильная версия
-- **CocoaPods**: Установленный и настроенный
+- **Tuist**: Установленный для генерации Xcode-проекта
 
 ## 📚 Дополнительные ресурсы
 

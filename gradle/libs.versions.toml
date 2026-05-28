@@ -14,12 +14,13 @@ androidx-lifecycle = "2.9.1"
 androidx-testExt = "1.2.1"
 composeMultiplatform = "1.8.2"
 junit = "4.13.2"
-kotlin = "2.2.0"
+kotlin = "2.2.21"
 coroutines = "1.10.2"
 settings = "1.3.0"
 serialization = "1.9.0"
 ktorClientVersion = "3.2.2"
 buildkonfig = "0.17.1"
+spmForKmp = "1.9.2"
 
 #noinspection NewerVersionAvailable
 mapkit = "4.17.0-full"
@@ -63,6 +64,7 @@ kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref =
 kotlinCocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 buildkonfig = { id = "com.codingfeline.buildkonfig", version.ref = "buildkonfig" }
+spmForKmp = { id = "io.github.frankois944.spmForKmp", version.ref = "spmForKmp" }
 
 # local
 iosBaseConvention = { id = "ios-base-convention" }

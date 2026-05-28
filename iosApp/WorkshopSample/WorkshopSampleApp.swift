@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import YandexMapsMobile
 
 class AppDelegate: NSObject, UIApplicationDelegate {
 

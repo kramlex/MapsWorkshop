@@ -204,4 +204,3 @@ open class YMKMapKitWrapper(override val impl: platform.YandexMapsMobile.YMKMapK
 
     override fun isValid(): Boolean = impl.isValid()
 }
-
