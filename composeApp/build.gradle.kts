@@ -2,6 +2,7 @@
 
 import com.codingfeline.buildkonfig.compiler.FieldSpec
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.multiplatformAppConvention)
@@ -17,14 +18,22 @@ plugins {
     buildkonfig.packageName = appId
 }
 
+val localProperties = Properties().apply {
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) localFile.inputStream().use { load(it) }
+}
+
+fun secret(key: String, default: String = ""): String =
+    localProperties.getProperty(key)
+        ?: project.findProperty(key)?.toString()
+        ?: default
+
 buildkonfig {
-    val folderId: String by rootProject.extra
-    val gptToken: String by rootProject.extra
-    val mapkitToken: String by rootProject.extra
     defaultConfigs {
-        buildConfigField(FieldSpec.Type.STRING, "folderId", folderId)
-        buildConfigField(FieldSpec.Type.STRING, "gptToken", gptToken)
-        buildConfigField(FieldSpec.Type.STRING, "mapkitToken", mapkitToken)
+        buildConfigField(FieldSpec.Type.STRING, "mapkitToken", secret("mapkitToken"))
+        buildConfigField(FieldSpec.Type.STRING, "openAiApiKey", secret("openAiApiKey"))
+        buildConfigField(FieldSpec.Type.STRING, "openAiModel", secret("openAiModel", "deepseek-v4-flash"))
+        buildConfigField(FieldSpec.Type.STRING, "openAiBaseUrl", secret("openAiBaseUrl", "https://api.deepseek.com/chat/completions"))
     }
 }
 
@@ -46,6 +55,7 @@ kotlin {
         implementation(compose.runtime)
         implementation(compose.foundation)
         implementation(compose.material3)
+        implementation(compose.materialIconsExtended)
         implementation(compose.ui)
         implementation(compose.components.resources)
         implementation(compose.components.uiToolingPreview)

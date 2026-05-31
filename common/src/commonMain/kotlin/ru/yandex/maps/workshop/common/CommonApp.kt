@@ -4,13 +4,18 @@ import com.yandex.mapkit.search.kmp.SearchFactory
 import com.yandex.mapkit.search.kmp.SearchManagerType
 import ru.yandex.maps.workshop.common.additional.context.PlatformContext
 import ru.yandex.maps.workshop.common.additional.context.observableSettingsFactory
-import ru.yandex.maps.workshop.common.additional.llm.YandexGPTClient
+import ru.yandex.maps.workshop.common.additional.llm.OpenAIClient
+import ru.yandex.maps.workshop.common.agent.AssistantApi
+import ru.yandex.maps.workshop.common.agent.MapCameraController
+import ru.yandex.maps.workshop.common.chat.ChatRepository
+import ru.yandex.maps.workshop.common.chat.ChatViewModel
 import ru.yandex.maps.workshop.common.internal.PlacemarkRepository
 import ru.yandex.maps.workshop.common.screen.MainScreenViewModel
 
 class CommonApp(
-    folderId: String,
-    iamToken: String,
+    openAiApiKey: String,
+    openAiModel: String,
+    openAiBaseUrl: String,
     context: PlatformContext
 ) {
 
@@ -19,14 +24,32 @@ class CommonApp(
         placemarkRepository = placemarkRepository
     )
 
+    fun createChatViewModel() = ChatViewModel(
+        repository = chatRepository,
+    )
+
+
+    val mapCameraController: MapCameraController = MapCameraController()
+
     // ======= Private
 
-    private val gptClient: YandexGPTClient by lazy {
-        YandexGPTClient(
-            folderId = folderId,
-            iamToken = iamToken,
+    private val assistantApi: AssistantApi by lazy {
+        AssistantApi(
+            searchManager = searchManager,
+            placemarkRepository = placemarkRepository,
+            mapCameraController = mapCameraController,
         )
     }
+
+    private val openAIClient: OpenAIClient by lazy {
+        OpenAIClient(
+            apiKey = openAiApiKey,
+            model = openAiModel,
+            baseUrl = openAiBaseUrl,
+        )
+    }
+
+    private val chatRepository: ChatRepository by lazy { ChatRepository() }
 
     private val searchManager: SearchManager by lazy {
         SearchManager(
@@ -42,7 +65,7 @@ class CommonApp(
 
     private val descriptionGenerator by lazy {
         DescriptionGenerator(
-            yandexGPTClient = gptClient,
+            openAIClient = openAIClient,
             searchManager = searchManager,
             placemarkRepository = placemarkRepository
         )

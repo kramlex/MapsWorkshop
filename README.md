@@ -2,7 +2,9 @@
 
 ## 🎯 Обзор проекта
 
-Этот воркшоп представляет собой пошаговое создание мобильного приложения с картами Yandex Maps, используя **Kotlin Multiplatform** и **Compose Multiplatform**. Приложение демонстрирует основные возможности работы с картами: отображение, добавление меток и работу с камерой.
+Этот воркшоп — пошаговое создание мобильного приложения с картами Yandex Maps на **Kotlin Multiplatform** и **Compose Multiplatform**. Базовое приложение демонстрирует основные возможности работы с картами: отображение, добавление меток и работу с камерой.
+
+Продолжение воркшопа посвящено встраиванию **AI-ассистента**, который общается с пользователем в чате и взаимодействует с картой: ищет места, ставит метки и управляет камерой через вызов инструментов (function calling) у LLM.
 
 ## 🛠 Технологический стек
 
@@ -10,6 +12,8 @@
 - **Kotlin Multiplatform** - кроссплатформенная разработка
 - **Compose Multiplatform** - современный UI фреймворк
 - **Yandex MapKit** - картографический SDK
+- **Ktor Client** - HTTP-клиент для запросов к LLM
+- **OpenAI-совместимый API** - LLM для AI-ассистента (по умолчанию DeepSeek)
 
 ### Целевые платформы
 - Android (API 26+)
@@ -115,14 +119,14 @@ sudo apt install git
 
 - **Готовые ключи для воркшопа**: [Скачать с GitHub Gist](https://gist.github.com/kramlex/483f0bf271e8af439e429c2582b19924)
 - **Yandex MapKit API Key** - для карт
-- **Yandex GPT API Key** - для AI
-- **Yandex Cloud Folder ID** - для облачных сервисов
+- **OpenAI-совместимый API Key** - для AI-ассистента (по умолчанию DeepSeek)
 
 ## 🏗 Структура проекта
 
 ```
 MapsWorkshopInternal/
-├── common/               # Общая логика приложения
+├── common/               # Общая логика: карта, чат, AI-агент
+│   └── additional/       # Базовые утилиты и LLM-клиент (Ktor)
 ├── composeApp/           # Основное приложение (Android/iOS)
 ├── mapkit-bindings/      # Kotlin обертки для Yandex MapKit
 ├── mapkit-interop/       # Нативные интерфейсы
@@ -133,14 +137,22 @@ MapsWorkshopInternal/
 
 #### `common/`
 Общая бизнес-логика приложения:
-- `CommonApp.kt` - основная модуль DI
+- `CommonApp.kt` - DI-контейнер приложения
 - `DescriptionGenerator.kt` - генератор описаний для меток
 - `SearchManager.kt` - менеджер поиска
+- `chat/` - состояние и логика чата (`ChatViewModel`, `ChatRepository`, `ChatMessage`)
+- `agent/` - AI-агент: `AssistantApi`, контроллер камеры и инструменты (`tools/`)
+
+#### `common/additional/`
+Базовые утилиты и инфраструктура:
+- `llm/OpenAIClient.kt` - клиент к OpenAI-совместимому API и DSL запроса
+- `udf/` - примитивы UDF-архитектуры (`ViewModel`, `Store`, `Event`)
 
 #### `composeApp/`
 Основное приложение с UI:
 - `App.kt` - главный компонент приложения
 - `MapActions.kt` - действия с картой
+- `internal/view/` - UI чата (`ChatScreen`, `ChatSummaryBar`)
 
 ## 🚀 Настройка проекта
 
@@ -153,16 +165,19 @@ cd MapsWorkshopInternal
 ### 2. Настройка API ключей
 **Получить ключи**: [🔑 GitHub Gist](https://gist.github.com/kramlex/483f0bf271e8af439e429c2582b19924)
 
-Создать файл `gradle.properties` в корне проекта:
+Создать файл `local.properties` в корне проекта (он уже в `.gitignore`, поэтому ключи не попадут в репозиторий):
 
 ```properties
-
-...
-
-folderId=ваш_folder_id
-gptToken=ваш_gpt_token
+#Mapkit
 mapkitToken=ваш_mapkit_token
+
+#OpenAI Client
+openAiApiKey=ваш_api_key
+openAiModel=deepseek-v4-flash
+openAiBaseUrl=https://api.deepseek.com/chat/completions
 ```
+
+`openAiModel` и `openAiBaseUrl` необязательны — по умолчанию используются `deepseek-v4-flash` и `https://api.deepseek.com/chat/completions`.
 
 ### 3. Синхронизация проекта
 ```bash
@@ -177,14 +192,26 @@ mapkitToken=ваш_mapkit_token
 
 > ⚠️ Файлы, сгенерированные Tuist (`*.xcodeproj`, `*.xcworkspace`, `Derived/`), не коммитятся — перегенерируйте их через `generate.sh` после клонирования или смены ветки.
 
-## 📱 Исходное состояние проекта (#2-base)
+## 📱 Исходное состояние проекта
 
 **Что уже готово в проекте**:
 - Полностью настроенный Kotlin Multiplatform проект с поддержкой Android и iOS
 - Интегрированный Yandex MapKit SDK с готовыми Kotlin обертками
 - Настроенная Gradle конфигурация для всех платформ
-- Готовая архитектура приложения с MVVM паттерном
+- Готовая архитектура приложения на UDF (Store / Reducer / Event)
 - Полнофункциональные интерфейсы для работы с картами и метками
+- Подготовленная инфраструктура AI-ассистента: UI чата, LLM-клиент (`OpenAIClient`), `AssistantApi` с инструментами и контроллером камеры
+
+На старте чат отвечает заглушкой — задача воркшопа подключить настоящую LLM и собрать агентский цикл.
+
+## 🤖 План воркшопа (AI-ассистент)
+
+1. Сделать настоящий вызов LLM и убрать заглушку
+2. Добавить системный промпт
+3. Добавить контекст
+4. Собрать агентский цикл с инструментом поиска
+5. Добавить инструменты для взаимодействия с картой
+6. Добавить инструменты и `AssistantApi` для взаимодействия с чатом
 
 
 ## 📊 Системные требования
@@ -205,7 +232,7 @@ mapkitToken=ваш_mapkit_token
 - [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html)
 - [Compose Multiplatform](https://www.jetbrains.com/lp/compose-multiplatform/)
 - [Yandex MapKit](https://developer.tech.yandex.ru/maps/mapkit/)
-- [Yandex GPT](https://cloud.yandex.ru/docs/foundation-models/)
+- [DeepSeek API](https://api-docs.deepseek.com/)
 
 ---
 

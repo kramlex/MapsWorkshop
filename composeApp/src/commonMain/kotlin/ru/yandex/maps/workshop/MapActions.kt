@@ -1,7 +1,9 @@
 package ru.yandex.maps.workshop
 
 import com.yandex.mapkit.kmp.geometry.Point
+import com.yandex.mapkit.kmp.map.CameraListener
 import com.yandex.mapkit.kmp.map.CameraPosition
+import com.yandex.mapkit.kmp.map.CameraUpdateReason
 import com.yandex.mapkit.kmp.map.InputListener
 import com.yandex.mapkit.kmp.map.Map
 import com.yandex.mapkit.kmp.map.MapObject
@@ -11,8 +13,15 @@ typealias MapObjectTapAction = (MapObject) -> Unit
 typealias MapTapAction = (Point) -> Unit
 typealias MapMoveAction = (cameraPosition: CameraPosition, finished: Boolean) -> Unit
 
-class CameraListenerWrapper(private val onCameraMoved: MapMoveAction) {
-    // TODO
+class CameraListenerWrapper(private val onCameraMoved: MapMoveAction) : CameraListener {
+    override fun onCameraPositionChanged(
+        map: Map,
+        cameraPosition: CameraPosition,
+        cameraUpdateReason: CameraUpdateReason,
+        finished: Boolean,
+    ) {
+        onCameraMoved(cameraPosition, finished)
+    }
 }
 
 class TapListenerWrapper(

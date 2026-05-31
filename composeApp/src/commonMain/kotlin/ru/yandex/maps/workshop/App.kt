@@ -1,14 +1,20 @@
 package ru.yandex.maps.workshop
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -18,18 +24,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.yandex.mapkit.kmp.AnimationFactory
 import com.yandex.mapkit.kmp.AnimationType
+import com.yandex.mapkit.kmp.geometry.BoundingBoxFactory
+import com.yandex.mapkit.kmp.geometry.Geometry
+import com.yandex.mapkit.kmp.geometry.GeometryFromBoundingBox
+import com.yandex.mapkit.kmp.geometry.Point
+import com.yandex.mapkit.kmp.geometry.PointFactory
+import com.yandex.mapkit.kmp.geometry.mpLatitude
+import com.yandex.mapkit.kmp.geometry.mpLongitude
 import com.yandex.mapkit.kmp.map.CameraPositionFactory
 import com.yandex.mapkit.kmp.map.MapObjectCollection
 import com.yandex.mapkit.kmp.map.PlacemarkMapObject
 import com.yandex.mapkit.kmp.map.geometry
 import com.yandex.mapkit.kmp.map.map
 import com.yandex.mapkit.kmp.map.mapObjects
+import com.yandex.mapkit.kmp.map.mpTarget
 import com.yandex.mapkit.kmp.map.userData
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import ru.yandex.maps.workshop.common.CommonApp
 import ru.yandex.maps.workshop.common.additional.context.PlatformContext
+import ru.yandex.maps.workshop.common.agent.CameraCommand
+import ru.yandex.maps.workshop.common.chat.ChatViewModel
 import ru.yandex.maps.workshop.common.screen.GeneratePlacemarkDescriptionEvent
 import ru.yandex.maps.workshop.common.screen.LongTapEvent
 import ru.yandex.maps.workshop.common.screen.PlacemarkViewState
@@ -39,6 +56,8 @@ import ru.yandex.maps.workshop.internal.map.Map
 import ru.yandex.maps.workshop.internal.map.MapState
 import ru.yandex.maps.workshop.internal.mapkit.bindToLifecycleOwner
 import ru.yandex.maps.workshop.internal.mapkit.rememberAndInitializeMapKit
+import ru.yandex.maps.workshop.internal.view.ChatScreen
+import ru.yandex.maps.workshop.internal.view.ChatSummaryBar
 import ru.yandex.maps.workshop.internal.view.PlacemarkPager
 
 class MapScreenMutableState(
@@ -84,8 +103,9 @@ fun App() {
     val platformContext = rememberPlatformContext()
     val app = remember {
         CommonApp(
-            iamToken = BuildKonfig.gptToken,
-            folderId = BuildKonfig.folderId,
+            openAiApiKey = BuildKonfig.openAiApiKey,
+            openAiModel = BuildKonfig.openAiModel,
+            openAiBaseUrl = BuildKonfig.openAiBaseUrl,
             context = platformContext,
         )
     }
@@ -95,6 +115,7 @@ fun App() {
     ).bindToLifecycleOwner()
 
     val viewModel = remember { app.createMainViewModel() }
+    val chatViewModel = remember { app.createChatViewModel() }
 
     val mapScreenMutableState = remember {
         MapScreenMutableState(
@@ -105,6 +126,17 @@ fun App() {
     val state by viewModel.viewStates().collectAsState()
     val placemarks = state.placemarks
 
+    LaunchedEffect(app.mapCameraController) {
+        app.mapCameraController.commands.collect { command ->
+            when (command) {
+                is CameraCommand.FocusPoint ->
+                    mapScreenMutableState.moveToPointAnimated(command.point, command.zoom)
+                is CameraCommand.FocusBounds ->
+                    mapScreenMutableState.moveToBoundsAnimated(command.points)
+            }
+        }
+    }
+
     MaterialTheme {
         Box {
             MapWithPlacemarks(
@@ -113,7 +145,10 @@ fun App() {
                 selectedPlacemarkId = state.selectedPlacemarkId,
                 onLongTap = { point ->
                     viewModel.dispatch(LongTapEvent(point))
-                }
+                },
+                onCameraMoved = { cameraPosition, _ ->
+                    app.mapCameraController.notifyTarget(cameraPosition.mpTarget)
+                },
             )
             Box(
                 contentAlignment = Alignment.BottomCenter,
@@ -136,6 +171,45 @@ fun App() {
                     }
                 )
             }
+
+            ChatOverlay(
+                viewModel = chatViewModel,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChatOverlay(
+    viewModel: ChatViewModel,
+    modifier: Modifier = Modifier,
+) {
+    var isChatOpen by remember { mutableStateOf(false) }
+    val chatSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val chatState by viewModel.viewStates().collectAsState()
+
+    AnimatedVisibility(!isChatOpen) {
+        ChatSummaryBar(
+            state = chatState,
+            onClick = { isChatOpen = true },
+            modifier = modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
+
+    if (isChatOpen) {
+        ModalBottomSheet(
+            onDismissRequest = { isChatOpen = false },
+            sheetState = chatSheetState,
+        ) {
+            ChatScreen(
+                viewModel = viewModel,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -147,17 +221,21 @@ fun MapWithPlacemarks(
     selectedPlacemarkId: String?,
     onLongTap: MapTapAction = {},
     onTap: MapTapAction = {},
+    onCameraMoved: MapMoveAction = { _, _ -> },
 ) {
     val pinIconFactory = PinIconFactory.create()
 
-    val listener = remember { TapListenerWrapper(onLongTap, onTap) }
+    val tapListener = remember { TapListenerWrapper(onLongTap, onTap) }
+    val cameraListener = remember { CameraListenerWrapper(onCameraMoved) }
     Map(
         state = mapScreenMutableState.mapState,
         onCreate = {
-            it.map.addInputListener(listener)
+            it.map.addInputListener(tapListener)
+            it.map.addCameraListener(cameraListener)
         },
         onRelease = {
-            it?.map?.removeInputListener(listener)
+            it?.map?.removeInputListener(tapListener)
+            it?.map?.removeCameraListener(cameraListener)
         }
     )
 
@@ -202,17 +280,54 @@ private fun MapScreenMutableState.moveToPlacemarkAnimated(
     selectedPlacemarkId: String?
 ) {
     val placemark = placemarks.find { it.id == selectedPlacemarkId } ?: return
-    val mapWindow = mapState.map
-    val map = mapWindow?.map ?: return
+    moveToPointAnimated(placemark.position, zoom = 16f)
+}
 
+private fun MapScreenMutableState.moveToPointAnimated(point: Point, zoom: Float? = null) {
+    val map = mapState.map?.map ?: return
     map.move(
         CameraPositionFactory.create(
-            target = placemark.position,
-            zoom = 16f,
+            target = point,
+            zoom = zoom ?: 16f,
             azimuth = 0f,
             tilt = 0f,
         ),
         AnimationFactory.create(AnimationType.SMOOTH, 1f),
         null
+    )
+}
+
+private fun MapScreenMutableState.moveToBoundsAnimated(points: List<Point>) {
+    if (points.isEmpty()) return
+    if (points.size == 1) {
+        moveToPointAnimated(points.first(), zoom = 16f)
+        return
+    }
+    val map = mapState.map?.map ?: return
+    map.move(
+        map.cameraPosition(boundingBoxOf(points)),
+        AnimationFactory.create(AnimationType.SMOOTH, 1f),
+        null
+    )
+}
+
+private fun boundingBoxOf(points: List<Point>): Geometry {
+    var minLat = Double.POSITIVE_INFINITY
+    var maxLat = Double.NEGATIVE_INFINITY
+    var minLon = Double.POSITIVE_INFINITY
+    var maxLon = Double.NEGATIVE_INFINITY
+    for (p in points) {
+        if (p.mpLatitude < minLat) minLat = p.mpLatitude
+        if (p.mpLatitude > maxLat) maxLat = p.mpLatitude
+        if (p.mpLongitude < minLon) minLon = p.mpLongitude
+        if (p.mpLongitude > maxLon) maxLon = p.mpLongitude
+    }
+    val latPad = (maxLat - minLat) * 0.15 + 0.0005
+    val lonPad = (maxLon - minLon) * 0.15 + 0.0005
+    return GeometryFromBoundingBox(
+        BoundingBoxFactory.create(
+            PointFactory.create(minLat - latPad, minLon - lonPad),
+            PointFactory.create(maxLat + latPad, maxLon + lonPad),
+        )
     )
 }

@@ -7,10 +7,7 @@ import com.yandex.mapkit.kmp.mpDescriptionText
 import com.yandex.mapkit.kmp.mpGeometry
 import com.yandex.mapkit.kmp.mpName
 import com.yandex.mapkit.utils.distanceTo
-import ru.yandex.maps.workshop.common.additional.llm.CompletionRequest
-import ru.yandex.maps.workshop.common.additional.llm.Message
-import ru.yandex.maps.workshop.common.additional.llm.YandexGPTClient
-import ru.yandex.maps.workshop.common.additional.llm.completeText
+import ru.yandex.maps.workshop.common.additional.llm.OpenAIClient
 import ru.yandex.maps.workshop.common.internal.PlacemarkRepository
 
 fun interface DescriptionGenerator {
@@ -22,7 +19,7 @@ fun interface DescriptionGenerator {
         private const val SEARCH_RADIUS_M = 500.0
 
         internal operator fun invoke(
-            yandexGPTClient: YandexGPTClient,
+            openAIClient: OpenAIClient,
             searchManager: SearchManager,
             placemarkRepository: PlacemarkRepository,
         ): DescriptionGenerator = DescriptionGenerator { placemarkId ->
@@ -56,21 +53,12 @@ fun interface DescriptionGenerator {
                 Не пиши в описании координаты, но может ты знаешь места рядом, используй это
             """.trimIndent()
 
-            val completionRequest = CompletionRequest(
-                messages = listOf(
-                    Message(
-                        role = "system",
-                        text = "Сгенерировать описание места на основе предоставленной пользователем информации",
-                    ),
+            val response = openAIClient.complete {
+                system("Сгенерировать описание места на основе предоставленной пользователем информации")
+                user(request)
+            }
 
-                    Message(
-                        role = "user",
-                        text = request
-                    ),
-                ),
-            )
-
-            yandexGPTClient.completeText(completionRequest) ?: error("Invalid response")
+            response.choices.firstOrNull()?.message?.content ?: error("Invalid response")
         }
     }
 }
