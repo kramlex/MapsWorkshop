@@ -1,25 +1,21 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import utils.configureIos
 
 plugins {
     id("org.jetbrains.kotlin.multiplatform")
 }
 
-kotlin {
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64(),
-    ).forEach { iosTarget ->
-        iosTarget.compilations.all {
-            compileTaskProvider.configure {
-                compilerOptions {
-                    freeCompilerArgs.add("-opt-in=kotlin.experimental.ExperimentalNativeApi")
-                    freeCompilerArgs.add("-opt-in=kotlinx.cinterop.ExperimentalForeignApi")
-                }
+configureIos {
+    compilations.all {
+        compileTaskProvider.configure {
+            compilerOptions {
+                freeCompilerArgs.add("-opt-in=kotlin.experimental.ExperimentalNativeApi")
+                freeCompilerArgs.add("-opt-in=kotlinx.cinterop.ExperimentalForeignApi")
             }
         }
     }
+}
 
+kotlin {
     sourceSets.all {
         languageSettings {
             optIn("kotlin.experimental.ExperimentalObjCName")
