@@ -2,10 +2,12 @@ package ru.yandex.maps.workshop.common.agent.tools
 
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import ru.yandex.maps.workshop.common.agent.AssistantApi
+import ru.yandex.maps.workshop.common.agent.PlaceCandidate
 
 object ShowPlacesOnMapTool : AgentTool {
 
@@ -46,6 +48,11 @@ object ShowPlacesOnMapTool : AgentTool {
     }
 
     override suspend fun execute(arguments: JsonObject, api: AssistantApi): String {
-        TODO("Parse arguments, call api.showOnMap, return result as string")
+        val placesElement = arguments["places"]
+            ?: throw IllegalArgumentException("missing required argument: places")
+        val places = json.decodeFromJsonElement<List<PlaceCandidate>>(placesElement)
+
+        val placemarkIds = api.showOnMap(places)
+        return json.encodeToString(placemarkIds)
     }
 }

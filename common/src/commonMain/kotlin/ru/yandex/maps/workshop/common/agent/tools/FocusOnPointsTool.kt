@@ -1,7 +1,11 @@
 package ru.yandex.maps.workshop.common.agent.tools
 
+import com.yandex.mapkit.kmp.geometry.PointFactory
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
@@ -32,6 +36,21 @@ object FocusOnPointsTool : AgentTool {
     }
 
     override suspend fun execute(arguments: JsonObject, api: AssistantApi): String {
-        TODO("Parse arguments, call api.focusOnPoints, return result as string")
+        val pointsElement = arguments["points"]
+            ?: throw IllegalArgumentException("missing required argument: points")
+        val points = pointsElement.jsonArray.map { element ->
+            val obj = element.jsonObject
+            PointFactory.create(
+                obj.requireDouble("latitude"),
+                obj.requireDouble("longitude"),
+            )
+        }
+
+        api.focusOnPoints(points)
+
+        return buildJsonObject {
+            put("ok", true)
+            put("count", points.size)
+        }.toString()
     }
 }

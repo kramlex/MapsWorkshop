@@ -25,6 +25,9 @@ class AgentToolset(
 
     private val tools: List<AgentTool> = listOf(
         SearchPlacesTool,
+        ShowPlacesOnMapTool,
+        FocusOnPointTool,
+        FocusOnPointsTool,
     )
 
     private val byName: Map<String, AgentTool> = tools.associateBy { it.spec.function.name }
@@ -73,6 +76,10 @@ fun jsonError(message: String): String =
 
 fun JsonObject.requireString(key: String): String =
     this[key]?.jsonPrimitive?.content
+        ?: throw IllegalArgumentException("missing required argument: $key")
+
+fun JsonObject.requireDouble(key: String): Double =
+    this[key]?.jsonPrimitive?.doubleOrNull
         ?: throw IllegalArgumentException("missing required argument: $key")
 
 fun JsonObject.optString(key: String): String? =
