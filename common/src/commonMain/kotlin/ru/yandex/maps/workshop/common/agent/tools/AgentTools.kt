@@ -28,6 +28,7 @@ class AgentToolset(
         ShowPlacesOnMapTool,
         FocusOnPointTool,
         FocusOnPointsTool,
+        CloseChatTool,
     )
 
     private val byName: Map<String, AgentTool> = tools.associateBy { it.spec.function.name }
