@@ -9,7 +9,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import ru.yandex.maps.workshop.common.additional.llm.OpenAIClient
 import ru.yandex.maps.workshop.common.agent.AssistantApi
+import ru.yandex.maps.workshop.common.agent.tools.AgentToolset
 
+private const val MAX_STEPS = 10
 private const val SYSTEM_PROMPT = """
 You are Mappy, a friendly AI-assistant in Yandex Maps. 
 
@@ -32,27 +34,49 @@ class ChatRepository(
 
     val messages: Flow<List<ChatMessage>> = entries.map { it.flatMap(ChatEntry::toMessages) }
 
+    private val toolset = AgentToolset(assistantApi)
+
     suspend fun sendMessage(text: String) {
         append(ChatEntry.User(id = nextId(), text = text))
         try {
+            runAgentLoop()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            append(ChatEntry.Error(id = nextId(), description = t.message ?: t.toString()))
+        }
+    }
+
+    private suspend fun runAgentLoop() {
+        repeat(MAX_STEPS) {
             val response = openAIClient.complete {
                 system(SYSTEM_PROMPT)
+                tools(toolset.specs)
                 entries.value.forEach { entry ->
                     when (entry) {
                         is ChatEntry.User -> user(entry.text)
-                        is ChatEntry.Assistant -> assistant(entry.text)
-                        is ChatEntry.Tool -> TODO("Implement in task-4")
+                        is ChatEntry.Assistant -> assistant(content = entry.text, toolCalls = entry.toolCalls)
+                        is ChatEntry.Tool -> toolResult(toolCallId = entry.callId, content = entry.result)
                         is ChatEntry.Error -> Unit
                     }
                 }
             }
 
             val message = response.choices.firstOrNull()?.message
-            append(ChatEntry.Assistant(id = nextId(), text = message?.content))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (t: Throwable) {
-            append(ChatEntry.Error(id = nextId(), description = t.message ?: t.toString()))
+            val calls = message?.toolCalls
+            append(ChatEntry.Assistant(id = nextId(), text = message?.content, toolCalls = calls))
+
+            if (calls.isNullOrEmpty()) return
+
+            for (call in calls) {
+                val result = toolset.dispatch(call)
+                append(ChatEntry.Tool(
+                    id = nextId(),
+                    callId = call.id,
+                    name = call.function.name,
+                    result = result,
+                ))
+            }
         }
     }
 
