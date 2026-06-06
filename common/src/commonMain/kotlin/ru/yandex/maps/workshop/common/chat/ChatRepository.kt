@@ -37,7 +37,14 @@ class ChatRepository(
         try {
             val response = openAIClient.complete {
                 system(SYSTEM_PROMPT)
-                user(text)
+                entries.value.forEach { entry ->
+                    when (entry) {
+                        is ChatEntry.User -> user(entry.text)
+                        is ChatEntry.Assistant -> assistant(entry.text)
+                        is ChatEntry.Tool -> TODO("Implement in task-4")
+                        is ChatEntry.Error -> Unit
+                    }
+                }
             }
 
             val message = response.choices.firstOrNull()?.message
