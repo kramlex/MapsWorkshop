@@ -10,6 +10,19 @@ import kotlinx.coroutines.flow.update
 import ru.yandex.maps.workshop.common.additional.llm.OpenAIClient
 import ru.yandex.maps.workshop.common.agent.AssistantApi
 
+private const val SYSTEM_PROMPT = """
+You are Mappy, a friendly AI-assistant in Yandex Maps. 
+
+This is a mobile app for navigation and discovery.
+
+You operate inside a chat and help users by answering their questions and solving their tasks.
+    
+Rules:
+1. You only answer questions related to navigation and discovery.
+2. You always answer in the user's language. Focus on the latest message.
+3. You give helpful answers, but short and concise.
+"""
+
 class ChatRepository(
     private val openAIClient: OpenAIClient,
     private val assistantApi: AssistantApi,
@@ -23,6 +36,7 @@ class ChatRepository(
         append(ChatEntry.User(id = nextId(), text = text))
         try {
             val response = openAIClient.complete {
+                system(SYSTEM_PROMPT)
                 user(text)
             }
 
