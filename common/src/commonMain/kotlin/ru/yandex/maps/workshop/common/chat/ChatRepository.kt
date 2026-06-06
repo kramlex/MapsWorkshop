@@ -2,7 +2,7 @@ package ru.yandex.maps.workshop.common.chat
 
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -21,8 +21,18 @@ class ChatRepository(
 
     suspend fun sendMessage(text: String) {
         append(ChatEntry.User(id = nextId(), text = text))
-        delay(1000)
-        append(ChatEntry.Assistant(id = nextId(), text = "MOCK: Привет!"))
+        try {
+            val response = openAIClient.complete {
+                user(text)
+            }
+
+            val message = response.choices.firstOrNull()?.message
+            append(ChatEntry.Assistant(id = nextId(), text = message?.content))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            append(ChatEntry.Error(id = nextId(), description = t.message ?: t.toString()))
+        }
     }
 
     fun clear() {
