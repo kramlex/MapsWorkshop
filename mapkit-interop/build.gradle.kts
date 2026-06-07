@@ -3,6 +3,9 @@
 import io.github.frankois944.spmForKmp.swiftPackageConfig
 import org.gradle.api.Action
 import org.gradle.api.Task
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import utils.configureIos
+import utils.withIos
 import java.io.File
 import java.io.Serializable
 
@@ -13,33 +16,29 @@ plugins {
 
 android.namespace = "ru.yandex.maps.workshop.mapkit.kmp"
 
-kotlin {
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64(),
-    ).forEach {
-        it.swiftPackageConfig(cinteropName = "YMK") {
-            minMacos = null
-            minTvos = null
-            minWatchos = null
-            packageDependencyPrefix = "platform"
-            minIos = "16.0"
-            dependency {
-                remoteBinary(
-                    url = uri("https://github.com/c-villain/YandexMapsMobile/releases/download/4.17.0/YandexMapsMobile.xcframework.zip"),
-                    packageName = "YandexMapsMobile",
-                    exportToKotlin = true,
-                    checksum = "f21284bc1a5f9cdd36aeeaf2eb1511bcb4e67c49e46d9561341351608d019459"
-                )
-            }
+configureIos {
+    swiftPackageConfig(cinteropName = "YMK") {
+        minMacos = null
+        minTvos = null
+        minWatchos = null
+        packageDependencyPrefix = "platform"
+        minIos = "16.0"
+        dependency {
+            remoteBinary(
+                url = uri("https://github.com/c-villain/YandexMapsMobile/releases/download/4.17.0/YandexMapsMobile.xcframework.zip"),
+                packageName = "YandexMapsMobile",
+                exportToKotlin = true,
+                checksum = "f21284bc1a5f9cdd36aeeaf2eb1511bcb4e67c49e46d9561341351608d019459"
+            )
+        }
 
-            exportedPackageSettings {
-                name = "YMK"
-            }
+        exportedPackageSettings {
+            name = "YMK"
         }
     }
+}
 
+kotlin {
     sourceSets.androidMain.dependencies {
         api(libs.mapkit)
     }
@@ -50,7 +49,7 @@ kotlin {
         }
     }
 
-    targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
+    targets.withType<KotlinNativeTarget> {
         compilations["main"].compileTaskProvider {
             compilerOptions {
                 freeCompilerArgs.add("-Xexport-kdoc")
@@ -67,9 +66,11 @@ val spmGeneratedDefRoot = layout.buildDirectory.dir("spmKmpPlugin/YMK/defFiles")
 val yandexMapsMobileDefTemplateFile = yandexMapsMobileDefTemplate.asFile
 val spmGeneratedDefRootDir = spmGeneratedDefRoot.get().asFile
 
-tasks.matching { it.name.startsWith("SwiftPackageConfigAppleYMKGenerateCInteropDefinition") }.configureEach {
-    inputs.file(yandexMapsMobileDefTemplate)
-    doLast(CopyYandexMapsMobileDefAction(yandexMapsMobileDefTemplateFile, spmGeneratedDefRootDir))
+withIos {
+    tasks.matching { it.name.startsWith("SwiftPackageConfigAppleYMKGenerateCInteropDefinition") }.configureEach {
+        inputs.file(yandexMapsMobileDefTemplate)
+        doLast(CopyYandexMapsMobileDefAction(yandexMapsMobileDefTemplateFile, spmGeneratedDefRootDir))
+    }
 }
 
 private class CopyYandexMapsMobileDefAction(

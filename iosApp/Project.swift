@@ -6,7 +6,7 @@ if [ "YES" = "$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED" ]; then
   exit 0
 fi
 cd "$SRCROOT/.."
-./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
+./gradlew :composeApp:embedAndSignAppleFrameworkForXcode -Pworkshop.enableIos=true
 """
 
 let project = Project(
